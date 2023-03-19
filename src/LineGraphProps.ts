@@ -5,7 +5,7 @@ import type { SharedValue } from 'react-native-reanimated'
 import type { Color, SkiaMutableValue } from '@shopify/react-native-skia'
 
 export interface GraphPoint {
-  value: number
+  value: number | null
   date: Date
 }
 

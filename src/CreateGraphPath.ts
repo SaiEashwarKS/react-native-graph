@@ -63,13 +63,13 @@ export function getGraphPathRange(
   const minValueY =
     range?.y?.min ??
     points.reduce(
-      (prev, curr) => (curr.value < prev ? curr.value : prev),
+      (prev, curr) => (curr.value && curr.value < prev ? curr.value : prev),
       Number.MAX_SAFE_INTEGER
     )
   const maxValueY =
     range?.y?.max ??
     points.reduce(
-      (prev, curr) => (curr.value > prev ? curr.value : prev),
+      (prev, curr) => (curr.value && curr.value > prev ? curr.value : prev),
       Number.MIN_SAFE_INTEGER
     )
 
@@ -168,6 +168,8 @@ function createGraphPathBase({
     return endX
   }
 
+  let lastRenderedX = startX
+
   for (
     let pixel = startX;
     startX <= pixel && pixel <= endX;
@@ -198,6 +200,10 @@ function createGraphPathBase({
     // }
 
     const value = graphData[index]!.value
+    if (value === null) {
+      continue
+    }
+    lastRenderedX = pixel
     const y =
       drawingHeight -
       getYInRange(drawingHeight, value, range.y) +
@@ -237,7 +243,7 @@ function createGraphPathBase({
 
   const gradientPath = path.copy()
 
-  gradientPath.lineTo(endX, height + verticalPadding)
+  gradientPath.lineTo(lastRenderedX, height + verticalPadding)
   gradientPath.lineTo(0 + horizontalPadding, height + verticalPadding)
 
   return { path: path, gradientPath: gradientPath }

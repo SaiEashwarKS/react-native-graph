@@ -43,13 +43,14 @@ import { GestureDetector } from 'react-native-gesture-handler'
 import { usePanGesture } from './hooks/usePanGesture'
 import { getYForX } from './GetYForX'
 import { hexToRgba } from './utils/hexToRgba'
+import { findLastIndex } from './utils/findLastIndex'
 
-const INDICATOR_RADIUS = 7
-const INDICATOR_BORDER_MULTIPLIER = 1.3
+const INDICATOR_RADIUS = 5
+const INDICATOR_BORDER_MULTIPLIER = 1.2
 const INDICATOR_PULSE_BLUR_RADIUS_SMALL =
   INDICATOR_RADIUS * INDICATOR_BORDER_MULTIPLIER
 const INDICATOR_PULSE_BLUR_RADIUS_BIG =
-  INDICATOR_RADIUS * INDICATOR_BORDER_MULTIPLIER + 20
+  INDICATOR_RADIUS * INDICATOR_BORDER_MULTIPLIER + 15
 
 export function AnimatedLineGraph({
   points: allPoints,
@@ -150,8 +151,16 @@ export function AnimatedLineGraph({
     [horizontalPadding, width]
   )
 
+  /**x coord of the last rendered point */
   const lineWidth = useMemo(() => {
-    const lastPoint = pointsInRange[pointsInRange.length - 1]
+    const lastNonNullValueIndex = findLastIndex(
+      pointsInRange,
+      (point) => point.value !== null
+    )
+    const lastPointIndex =
+      lastNonNullValueIndex === -1 ? 0 : lastNonNullValueIndex
+
+    const lastPoint = pointsInRange[lastPointIndex]
 
     if (lastPoint == null) return drawingWidth
 
@@ -165,13 +174,24 @@ export function AnimatedLineGraph({
         : undefined,
     [commandsChanged, horizontalPadding, lineWidth]
   )
-  const indicatorY = useMemo(
-    () =>
-      commandsChanged >= 0 && indicatorX != null
-        ? getYForX(commands.current, indicatorX)
-        : undefined,
-    [commandsChanged, indicatorX]
-  )
+
+  /**hack to solve indicatorY being undefined at times.
+   * ideally, that sshouldnt happen
+   */
+  const prevIndicatorY = useRef<number | undefined>()
+
+  const indicatorY = useMemo(() => {
+    if (commandsChanged >= 0 && indicatorX != null) {
+      const yForX = getYForX(commands.current, indicatorX)
+      return yForX ? yForX : prevIndicatorY.current
+    }
+    return prevIndicatorY.current
+  }, [commandsChanged, indicatorX])
+
+  if (indicatorY) {
+    prevIndicatorY.current = indicatorY
+  }
+
   const indicatorPulseColor = useMemo(() => hexToRgba(color, 0.4), [color])
 
   const shouldFillGradient = gradientFillColors != null
@@ -328,11 +348,8 @@ export function AnimatedLineGraph({
       withDelay(
         1000,
         withSequence(
-          withTiming(1, { duration: 1100 }),
-          withTiming(0, { duration: 0 }), // revert to 0
-          withTiming(0, { duration: 1200 }), // delay between pulses
-          withTiming(1, { duration: 1100 }),
-          withTiming(1, { duration: 2000 }) // delay after both pulses
+          withTiming(1, { duration: 1000 }),
+          withTiming(0, { duration: 0 }) // revert to 0
         )
       ),
       -1
@@ -367,7 +384,11 @@ export function AnimatedLineGraph({
         const dataPoint = pointsInRange[pointIndex]
         pointSelectedIndex.current = pointIndex
 
-        if (dataPoint != null) {
+        if (
+          dataPoint != null &&
+          dataPoint.value !== null &&
+          dataPoint.value >= 0
+        ) {
           onPointSelected?.(dataPoint)
         }
       }
@@ -539,7 +560,7 @@ export function AnimatedLineGraph({
                 />
               )}
 
-              {enableIndicator && (
+              {enableIndicator && indicatorY && indicatorY >= 0 && (
                 <Group>
                   {indicatorPulsating && (
                     <Circle
