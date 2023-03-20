@@ -54,24 +54,31 @@ type GraphPathConfigWithoutGradient = GraphPathConfig & {
 
 export function getGraphPathRange(
   points: GraphPoint[],
-  range?: GraphRange
+  range?: GraphRange,
+  baseLineY?: number
 ): GraphPathRange {
   const minValueX = range?.x?.min ?? points[0]?.date ?? new Date()
   const maxValueX =
     range?.x?.max ?? points[points.length - 1]?.date ?? new Date()
 
-  const minValueY =
+  let minValueY =
     range?.y?.min ??
     points.reduce(
       (prev, curr) => (curr.value && curr.value < prev ? curr.value : prev),
       Number.MAX_SAFE_INTEGER
     )
-  const maxValueY =
+
+  let maxValueY =
     range?.y?.max ??
     points.reduce(
       (prev, curr) => (curr.value && curr.value > prev ? curr.value : prev),
       Number.MIN_SAFE_INTEGER
     )
+
+  if (baseLineY) {
+    minValueY = Math.min(minValueY, baseLineY)
+    maxValueY = Math.max(maxValueY, baseLineY)
+  }
 
   return {
     x: { min: minValueX, max: maxValueX },

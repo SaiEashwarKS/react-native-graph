@@ -16,6 +16,7 @@ import {
   mix,
   Circle,
   Shadow,
+  DashPathEffect,
 } from '@shopify/react-native-skia'
 import type { AnimatedLineGraphProps } from './LineGraphProps'
 import { SelectionDot as DefaultSelectionDot } from './SelectionDot'
@@ -26,6 +27,7 @@ import {
   GraphPathRange,
   getXInRange,
   getPointsInRange,
+  getYInRange,
 } from './CreateGraphPath'
 import Reanimated, {
   runOnJS,
@@ -70,9 +72,11 @@ export function AnimatedLineGraph({
   horizontalPadding = enableIndicator
     ? Math.ceil(INDICATOR_RADIUS * INDICATOR_BORDER_MULTIPLIER)
     : 0,
-  verticalPadding = lineThickness,
+  verticalPadding = lineThickness + INDICATOR_PULSE_BLUR_RADIUS_BIG,
   TopAxisLabel,
   BottomAxisLabel,
+  baseLineY,
+  baseLineYColor = '#7C7E8C',
   ...props
 }: AnimatedLineGraphProps): React.ReactElement {
   const [width, setWidth] = useState(0)
@@ -137,9 +141,24 @@ export function AnimatedLineGraph({
   const pointSelectedIndex = useRef<number>()
 
   const pathRange: GraphPathRange = useMemo(
-    () => getGraphPathRange(allPoints, range),
-    [allPoints, range]
+    () => getGraphPathRange(allPoints, range, baseLineY),
+    [allPoints, range, baseLineY]
   )
+
+  const horizontalBaseLine = useMemo(() => {
+    if (!baseLineY) {
+      return null
+    }
+    const path = Skia.Path.Make()
+    const y = height - getYInRange(height, baseLineY, pathRange.y)
+    path.moveTo(0, y)
+
+    for (let i = 1; i < width - 1; i += 2) {
+      const x = i
+      path.lineTo(x, y)
+    }
+    return path
+  }, [baseLineY, height, pathRange.y, verticalPadding, width])
 
   const pointsInRange = useMemo(
     () => getPointsInRange(allPoints, pathRange),
@@ -520,6 +539,18 @@ export function AnimatedLineGraph({
               accessibilityLanguage={undefined}
             >
               <Group>
+                {horizontalBaseLine && (
+                  <Path
+                    path={horizontalBaseLine}
+                    strokeWidth={lineThickness}
+                    style="stroke"
+                    strokeJoin="round"
+                    strokeCap="round"
+                    color={baseLineYColor}
+                  >
+                    <DashPathEffect intervals={[4, 8]} />
+                  </Path>
+                )}
                 <Path
                   // @ts-ignore
                   path={path}

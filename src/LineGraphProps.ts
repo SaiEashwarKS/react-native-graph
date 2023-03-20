@@ -47,6 +47,11 @@ interface BaseLineGraphProps extends ViewProps {
    * Enable the Fade-In Gradient Effect at the beginning of the Graph
    */
   enableFadeInMask?: boolean
+  /**
+   * horizontal dotted line to drawn across the entire width
+   */
+  baseLineY?: number
+  baseLineYColor?: string
 }
 
 export type StaticLineGraphProps = BaseLineGraphProps & {
