@@ -158,7 +158,7 @@ export function AnimatedLineGraph({
       path.lineTo(x, y)
     }
     return path
-  }, [baseLineY, height, pathRange.y, verticalPadding, width])
+  }, [baseLineY, height, pathRange.y, width])
 
   const pointsInRange = useMemo(
     () => getPointsInRange(allPoints, pathRange),
@@ -198,6 +198,10 @@ export function AnimatedLineGraph({
    * ideally, that sshouldnt happen
    */
   const prevIndicatorY = useRef<number | undefined>()
+
+  useEffect(() => {
+    prevIndicatorY.current = undefined
+  }, [pointsInRange])
 
   const indicatorY = useMemo(() => {
     if (commandsChanged >= 0 && indicatorX != null) {
