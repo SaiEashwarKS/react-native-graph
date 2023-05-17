@@ -132,12 +132,16 @@ export const getPointsInRange = (
   })
 }
 
-type GraphPathWithGradient = { path: SkPath; gradientPath: SkPath }
+type GraphPath = { path: SkPath; lastPoint?: { x: number; y: number } }
+
+type GraphPathWithGradient = GraphPath & {
+  gradientPath: SkPath
+}
 
 function createGraphPathBase(
   props: GraphPathConfigWithGradient
 ): GraphPathWithGradient
-function createGraphPathBase(props: GraphPathConfigWithoutGradient): SkPath
+function createGraphPathBase(props: GraphPathConfigWithoutGradient): GraphPath
 
 function createGraphPathBase({
   pointsInRange: graphData,
@@ -148,7 +152,7 @@ function createGraphPathBase({
   canvasWidth: width,
   shouldFillGradient,
 }: GraphPathConfigWithGradient | GraphPathConfigWithoutGradient):
-  | SkPath
+  | GraphPath
   | GraphPathWithGradient {
   const path = Skia.Path.Make()
 
@@ -157,7 +161,7 @@ function createGraphPathBase({
   // Canvas height substracted by the vertical padding => Actual drawing height
   const drawingHeight = height - 2 * verticalPadding
 
-  if (graphData[0] == null) return path
+  if (graphData[0] == null) return { path }
 
   const points: SkPoint[] = []
 
@@ -175,7 +179,7 @@ function createGraphPathBase({
     return endX
   }
 
-  let lastRenderedX = startX
+  let lastPoint: { x: number; y: number } | undefined
 
   for (
     let pixel = startX;
@@ -210,13 +214,14 @@ function createGraphPathBase({
     if (value === null) {
       continue
     }
-    lastRenderedX = pixel
     const y =
       drawingHeight -
       getYInRange(drawingHeight, value, range.y) +
       verticalPadding
 
-    points.push({ x: pixel, y: y })
+    const point = { x: pixel, y }
+    lastPoint = point
+    points.push(point)
   }
 
   for (let i = 0; i < points.length; i++) {
@@ -246,17 +251,17 @@ function createGraphPathBase({
     }
   }
 
-  if (!shouldFillGradient) return path
+  if (!shouldFillGradient) return { path, lastPoint }
 
   const gradientPath = path.copy()
 
-  gradientPath.lineTo(lastRenderedX, height + verticalPadding)
+  gradientPath.lineTo(lastPoint?.x ?? startX, height + verticalPadding)
   gradientPath.lineTo(0 + horizontalPadding, height + verticalPadding)
 
-  return { path: path, gradientPath: gradientPath }
+  return { path: path, gradientPath: gradientPath, lastPoint }
 }
 
-export function createGraphPath(props: GraphPathConfig): SkPath {
+export function createGraphPath(props: GraphPathConfig): GraphPath {
   return createGraphPathBase({ ...props, shouldFillGradient: false })
 }
 

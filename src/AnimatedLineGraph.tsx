@@ -47,7 +47,6 @@ import { getSixDigitHex } from './utils/getSixDigitHex'
 import { usePanGesture } from './hooks/usePanGesture'
 import { getYForX } from './GetYForX'
 import { hexToRgba } from './utils/hexToRgba'
-import { findLastIndex } from './utils/findLastIndex'
 
 const INDICATOR_RADIUS = 5
 const INDICATOR_BORDER_MULTIPLIER = 1.2
@@ -89,6 +88,7 @@ export function AnimatedLineGraph({
     enabled: enablePanGesture,
     holdDuration: panGestureDelay,
   })
+  const prevIsActive = useRef<boolean | undefined>(undefined)
   const circleX = useSharedValue(0)
   const circleY = useSharedValue(0)
   const pathEnd = useSharedValue(0)
@@ -147,6 +147,9 @@ export function AnimatedLineGraph({
   const paths = useValue<{ from?: SkPath; to?: SkPath }>({})
   const gradientPaths = useValue<{ from?: SkPath; to?: SkPath }>({})
   const commands = useSharedValue<PathCommand[]>([])
+  const lastPoint = useSharedValue<{ x: number; y: number } | undefined>(
+    undefined
+  )
   const [commandsChanged, setCommandsChanged] = useState(0)
   const pointSelectedIndex = useRef<number>()
 
@@ -180,28 +183,12 @@ export function AnimatedLineGraph({
     [horizontalPadding, width]
   )
 
-  /**x coord of the last rendered point */
-  const lineWidth = useMemo(() => {
-    const lastNonNullValueIndex = findLastIndex(
-      pointsInRange,
-      (point) => point.value !== null
-    )
-    const lastPointIndex =
-      lastNonNullValueIndex === -1 ? 0 : lastNonNullValueIndex
-
-    const lastPoint = pointsInRange[lastPointIndex]
-
-    if (lastPoint == null) return drawingWidth
-
-    return Math.max(getXInRange(drawingWidth, lastPoint.date, pathRange.x), 0)
-  }, [drawingWidth, pathRange.x, pointsInRange])
-
   const indicatorX = useDerivedValue(
-    () => Math.floor(lineWidth) + horizontalPadding
+    () => Math.floor(lastPoint.value?.x ?? 0),
+    [commandsChanged, horizontalPadding]
   )
-  const indicatorY = useDerivedValue(
-    () => getYForX(commands.value, indicatorX.value) || 0
-  )
+
+  const indicatorY = useDerivedValue(() => lastPoint.value?.y ?? 0)
 
   const indicatorPulseColor = useMemo(() => hexToRgba(color, 0.4), [color])
 
@@ -230,13 +217,20 @@ export function AnimatedLineGraph({
     }
 
     if (shouldFillGradient) {
-      const { path: pathNew, gradientPath: gradientPathNew } =
-        createGraphPathWithGradient(createGraphPathProps)
+      const {
+        path: pathNew,
+        gradientPath: gradientPathNew,
+        lastPoint: lastPointNew,
+      } = createGraphPathWithGradient(createGraphPathProps)
 
       path = pathNew
       gradientPath = gradientPathNew
+      lastPoint.value = lastPointNew
     } else {
-      path = createGraphPath(createGraphPathProps)
+      const { path: pathNew, lastPoint: lastPointNew } =
+        createGraphPath(createGraphPathProps)
+      path = pathNew
+      lastPoint.value = lastPointNew
     }
 
     commands.value = path.toCmds()
@@ -430,15 +424,24 @@ export function AnimatedLineGraph({
         velocity: 0,
       })
 
-      if (active) {
-        onGestureStart?.()
-        stopPulsating()
-      } else {
-        onGestureEnd?.()
-        pointSelectedIndex.current = undefined
-        pathEnd.value = 1
-        startPulsating()
+      if (
+        prevIsActive.current === undefined ||
+        prevIsActive.current !== active
+      ) {
+        if (active) {
+          onGestureStart?.()
+          stopPulsating()
+        } else {
+          onGestureEnd?.()
+          pointSelectedIndex.current = undefined
+          pathEnd.value = 1
+          startPulsating()
+          startPulsating()
+          startPulsating()
+        }
       }
+
+      prevIsActive.current = active
     },
     [
       indicatorRadius,

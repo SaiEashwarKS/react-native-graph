@@ -40,7 +40,7 @@ export function StaticLineGraph({
     [allPoints, pathRange]
   )
 
-  const path = useMemo(
+  const { path } = useMemo(
     () =>
       createGraphPath({
         pointsInRange: pointsInRange,
