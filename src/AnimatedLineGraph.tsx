@@ -101,7 +101,7 @@ export function AnimatedLineGraph({
   const indicatorPulseAnimation = useSharedValue(0)
   const indicatorPulseRadius = useDerivedValue(() => {
     if (pulseTrigger.value === 0) {
-      return mix(
+      return runOnJS(mix)(
         indicatorPulseAnimation.value,
         INDICATOR_PULSE_BLUR_RADIUS_SMALL,
         INDICATOR_PULSE_BLUR_RADIUS_BIG
@@ -111,7 +111,7 @@ export function AnimatedLineGraph({
   })
   const indicatorPulseOpacity = useDerivedValue(() => {
     if (pulseTrigger.value === 0) {
-      return mix(indicatorPulseAnimation.value, 1, 0)
+      return runOnJS(mix)(indicatorPulseAnimation.value, 1, 0)
     }
     return 0
   })
