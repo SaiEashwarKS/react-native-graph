@@ -436,8 +436,6 @@ export function AnimatedLineGraph({
           pointSelectedIndex.current = undefined
           pathEnd.value = 1
           startPulsating()
-          startPulsating()
-          startPulsating()
         }
       }
 
